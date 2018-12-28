@@ -16,8 +16,7 @@ def _get_best_safe_move(_ship, _movement_choices):
         if position_dict[key] not in _movement_choices:
             safe_halite_dict[key] = halite_dict[key]
 
-    logging.info(f'_get_best_safe_move {max(halite_dict, key=halite_dict.get)}')
-    return max(halite_dict, key=halite_dict.get)
+    return Utils.get_max_halite_move(halite_dict)
 
 
 def _make_move(_ship, _movement_choices, move_choice):
@@ -35,13 +34,11 @@ def make_move(_ship, _game_map, _movement_choices, _position_dict):
         if _ship.is_full:
             ship_states[ship.id] = 'deposit'
             move_choice = _game_map.naive_navigate(_ship, me.shipyard.position)
-            logging.info(f'ship: {ship.id} is full!')
         elif _game_map[_ship.position].halite_amount < constants.MAX_HALITE / 10:
-            move_choice = max(halite_dict, key=halite_dict.get)
+            move_choice = Utils.get_max_halite_move(halite_dict)
     elif _ship.position == me.shipyard.position:
         ship_states[ship.id] = 'collect'
-        move_choice = max(halite_dict, key=halite_dict.get)
-        logging.info(f'ship: {ship.id} is successfully deposited!')
+        move_choice = Utils.get_max_halite_move(halite_dict)
     elif ship_states[ship.id] == 'deposit':
         move_choice = _game_map.naive_navigate(_ship, me.shipyard.position)
 
@@ -55,14 +52,16 @@ while True:
     me = game.me
 
     movement_choices = []
+    current_positions = []
+    for ship in me.get_ships():
+        current_positions.append(ship.position)
+
     for ship in me.get_ships():
         if ship.id not in ship_states:
             ship_states[ship.id] = 'collect'
 
-        position_dict, halite_dict = Utils.make_surrounding_dict(ship, game_map, movement_choices)
+        position_dict, halite_dict = Utils.make_surrounding_dict(ship, game_map, movement_choices, current_positions)
         movement_choices = make_move(ship, game_map, movement_choices, position_dict)
-
-    logging.info(f'movement_choices: {movement_choices}, step: {game.turn_number}, ships: {len(me.get_ships())}')
 
     if game.turn_number <= 200 and me.halite_amount >= constants.SHIP_COST and not game_map[me.shipyard].is_occupied:
         command_queue.append(me.shipyard.spawn())
