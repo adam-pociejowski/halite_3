@@ -6,7 +6,7 @@ import logging
 import random
 
 game = hlt.Game()
-game.ready("MyPythonBot")
+game.ready("MyRuleBasedPythonBot")
 ship_states = {}
 
 
