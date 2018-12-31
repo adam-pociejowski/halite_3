@@ -9,3 +9,9 @@ __pycache__/
 *.class
 *.ipr
 *.iws
+
+training_data/
+replays/
+summary/
+models/
+game_play/
