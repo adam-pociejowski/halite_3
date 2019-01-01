@@ -1,6 +1,6 @@
 import hlt
 from hlt import constants
-from hlt.bot_utils import Utils
+from hlt.bot_utils import *
 from hlt.positionals import Direction
 import logging
 import random
@@ -12,7 +12,7 @@ stderr = sys.stderr
 sys.stderr = open(os.devnull, 'w')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-import tensorflow as tf
+summary_writer = SummaryWriter()
 
 sys.stderr = stderr
 
@@ -66,16 +66,6 @@ def make_move(_ship, _game_map, _movement_choices, _position_dict):
     return _make_move(_ship, _movement_choices, move_choice)
 
 
-with tf.name_scope('Summaries'):
-    mean_reward_placeholder = tf.placeholder(tf.float32, shape=None, name='mean_reward')
-    mean_reward = tf.summary.scalar('mean_reward', mean_reward_placeholder)
-
-    halite_placeholder = tf.placeholder(tf.float32, shape=None, name='halite_value')
-    halite_value = tf.summary.scalar('halite_value', halite_placeholder)
-
-    merged = tf.summary.merge_all()
-
-
 while True:
     command_queue = []
     game.update_frame()
@@ -94,19 +84,14 @@ while True:
         position_dict, halite_dict = Utils.make_surrounding_dict(ship, game_map, movement_choices, current_positions)
         movement_choices = make_move(ship, game_map, movement_choices, position_dict)
 
-    if turn_limit > 0:
-        if game.turn_number == turn_limit:
-            sess = tf.Session()
-            summary_writer = tf.summary.FileWriter(f'summary/rule_based_bot')
-            total_halite_collected = (ships_created * constants.SHIP_COST) + me.halite_amount - 5000
-            summary, _, _ = sess.run([merged, mean_reward, halite_value], feed_dict={mean_reward_placeholder: 0,
-                                                                                     halite_placeholder: total_halite_collected / 1000.0})
-            summary_writer.add_summary(summary, (episode * turn_limit) + game.turn_number)
+    if game.turn_number == turn_limit:
+        total_halite_collected_norm = ((ships_created * constants.SHIP_COST) + me.halite_amount - 5000) / 1000.0
+        step = (episode * turn_limit) + game.turn_number
+        summary_writer.add_summary(0.0, total_halite_collected_norm, step, 0.0, 'rule_based_bot')
 
     if game.turn_number <= 200 and me.halite_amount >= constants.SHIP_COST and not game_map[me.shipyard].is_occupied:
-        if len(me.get_ships()) == 0:
-            command_queue.append(me.shipyard.spawn())
-            ships_created += 1
+        command_queue.append(me.shipyard.spawn())
+        ships_created += 1
 
     game.end_turn(command_queue)
 

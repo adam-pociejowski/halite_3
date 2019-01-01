@@ -1,6 +1,6 @@
 import hlt
 from hlt import constants
-from hlt.bot_utils import Utils
+from hlt.bot_utils import *
 from hlt.positionals import Direction, Position
 import logging
 import random
@@ -8,15 +8,32 @@ import numpy as np
 
 import sys
 import os
+
+episode = 0
+turn_limit = 0
+loadModel = False
+train = False
+logging.info(sys.argv)
+
+if len(sys.argv) >= 4:
+    episode = int(sys.argv[1])
+    turn_limit = int(sys.argv[2])
+    if int(sys.argv[3]) == 1:
+        loadModel = True
+    if int(sys.argv[4]) == 1:
+        train = True
+
 stderr = sys.stderr
 sys.stderr = open(os.devnull, 'w')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-import tensorflow as tf
 from algorithms.actor_critic_model import ActorCriticModel
+from algorithms.dql_model import DQLModel
 
-radius = 16
-model = ActorCriticModel(radius=radius, output_number=4, load_model=True)
+radius = 10
+# model = ActorCriticModel(radius=radius, output_number=4, load_model=False)
+model = DQLModel(radius=radius, output_number=5, load_model=loadModel, episode=episode)
+summary_writer = SummaryWriter()
 
 sys.stderr = stderr
 
@@ -31,24 +48,7 @@ MIN_TO_COLLECT_HALITE_AMOUNT = 200
 STOP_COLLECT_HALITE_AMOUNT = 20
 
 game = hlt.Game()
-game.ready("ActorCriticBot2")
-
-episode = 0
-turn_limit = 0
-if len(sys.argv) >= 2:
-    logging.info(f'Argument List: {str(sys.argv[1])}')
-    episode = int(sys.argv[1])
-    turn_limit = int(sys.argv[2])
-
-
-with tf.name_scope('Summaries'):
-    mean_reward_placeholder = tf.placeholder(tf.float32, shape=None, name='mean_reward')
-    mean_reward = tf.summary.scalar('mean_reward', mean_reward_placeholder)
-
-    halite_placeholder = tf.placeholder(tf.float32, shape=None, name='halite_value')
-    halite_value = tf.summary.scalar('halite_value', halite_placeholder)
-
-    merged = tf.summary.merge_all()
+game.ready("ReinforcementBot")
 
 
 while True:
@@ -81,8 +81,6 @@ while True:
                                    ship_experience[ship.id]['action'],
                                    Utils.norm_halite(game_map[ship.position].halite_amount),
                                    surroundings)
-                logging.info(f"COLLECTING: reward: {Utils.norm_halite(game_map[ship.position].halite_amount)}, "
-                             f"action: {ship_experience[ship.id]['action']}")
                 del ship_experience[ship.id]
         elif ship_states[ship.id] == 'search' or (ship_states[ship.id] == 'collect'
                                                   and game_map[ship.position].halite_amount < STOP_COLLECT_HALITE_AMOUNT):
@@ -92,20 +90,18 @@ while True:
                                    ship_experience[ship.id]['action'],
                                    0.0,
                                    surroundings)
-                logging.info(f"SEARCHING: reward: 0.0, action: {ship_experience[ship.id]['action']}")
 
         if ship_states[ship.id] == 'search':
-            if random.random() > 0.8:
-                predicted_action = np.random.randint(4)
-            else:
-                predicted_action = model.predict(np.array([surroundings]))[0]
+            predicted_action = model.predict(np.array([surroundings]))[0]
+            predicted_move = Utils.directions[predicted_action]
+            move_choice = game_map.naive_navigate(ship, ship.position.directional_offset(predicted_move))
+
             ship_experience[ship.id] = {
-                'action': predicted_action,
+                'action': Utils.actions[move_choice],
                 'observation': surroundings,
                 'halite': Utils.norm_halite(ship.halite_amount)
             }
-            move_choice = Utils.directions[predicted_action]
-            logging.info(f'ship: {ship.id}, SEARCHING, {ship.halite_amount}')
+            logging.info(f'ship: {ship.id}, SEARCHING, ML action: {predicted_action}, final action: {Utils.actions[move_choice]}')
         elif ship_states[ship.id] == 'deposit':
             move_choice = game_map.naive_navigate(ship, me.shipyard.position)
             logging.info(f'ship: {ship.id}, DEPOSITING, {ship.halite_amount}')
@@ -115,23 +111,18 @@ while True:
 
         command_queue.append(ship.move(move_choice))
 
-    if turn_limit > 0:
+    if game.turn_number <= 200 and me.halite_amount >= constants.SHIP_COST and not game_map[me.shipyard].is_occupied:
+        command_queue.append(me.shipyard.spawn())
+        ships_created += 1
+
+    if train:
         model.train()
         if game.turn_number % 20 == 0:
             model.save()
-            if game.turn_number == turn_limit:
-                sess = tf.Session()
-                summary_writer = tf.summary.FileWriter(f'summary/{model.model_name}')
-
-                total_halite_collected = (ships_created * constants.SHIP_COST) + me.halite_amount - 5000
-                summary, _, _ = sess.run([merged, mean_reward, halite_value], feed_dict={mean_reward_placeholder: episode_reward,
-                                                                                         halite_placeholder: total_halite_collected / 1000.0})
-                summary_writer.add_summary(summary, (episode * turn_limit) + game.turn_number)
-
-    if game.turn_number <= 200 and me.halite_amount >= constants.SHIP_COST and not game_map[me.shipyard].is_occupied:
-        if len(me.get_ships()) == 0:
-            command_queue.append(me.shipyard.spawn())
-            ships_created += 1
+        if game.turn_number == turn_limit:
+            total_halite_collected_norm = ((ships_created * constants.SHIP_COST) + me.halite_amount - 5000) / 1000.0
+            step = (episode * turn_limit) + game.turn_number
+            summary_writer.add_summary(episode_reward, total_halite_collected_norm, step, model.epsilon, model.model_name)
 
     game.end_turn(command_queue)
 

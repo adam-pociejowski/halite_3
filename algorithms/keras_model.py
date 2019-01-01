@@ -18,7 +18,6 @@ class KerasModel:
         self.min_memory_size = min_memory_size
         __metaclass__ = abc.ABCMeta
         self._init_episode()
-        # self.model_name = datetime.datetime.fromtimestamp(ts).strftime('%Y%m%d_%H%M%S')
         self.model_name = model_name
 
     def post_step_actions(self, observations, actions, rewards, new_observations):
@@ -56,11 +55,3 @@ class KerasModel:
         del self.reward_memory
         del self.observation_memory
         del self.new_observation_memory
-
-    @abc.abstractmethod
-    def _train(self):
-        return
-
-    @abc.abstractmethod
-    def _restore_model(self):
-        return
