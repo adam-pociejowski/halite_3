@@ -67,15 +67,12 @@ while True:
 
         if ship.position == me.shipyard.position and ship_states[ship.id] == 'deposit':
             ship_states[ship.id] = 'search'
-            logging.info(f'ship: {ship.id}, DEPOSIT SUCCESSFUL')
 
         surroundings = Utils.get_surroundings(ship, game_map, radius, dropoffs_positions, current_positions)
         if ship.halite_amount > DEPOSIT_HALITE_AMOUNT and ship_states[ship.id] != 'deposit':
             ship_states[ship.id] = 'deposit'
-            logging.info(f'ship: {ship.id}, STARTED DEPOSIT')
         elif game_map[ship.position].halite_amount > MIN_TO_COLLECT_HALITE_AMOUNT and ship_states[ship.id] != 'collect':
             ship_states[ship.id] = 'collect'
-            logging.info(f'ship: {ship.id}, STARTED COLLECT')
             if ship.id in ship_experience:
                 model.store_memory(ship_experience[ship.id]['observation'],
                                    ship_experience[ship.id]['action'],
@@ -101,13 +98,10 @@ while True:
                 'observation': surroundings,
                 'halite': Utils.norm_halite(ship.halite_amount)
             }
-            logging.info(f'ship: {ship.id}, SEARCHING, ML action: {predicted_action}, final action: {Utils.actions[move_choice]}')
         elif ship_states[ship.id] == 'deposit':
             move_choice = game_map.naive_navigate(ship, me.shipyard.position)
-            logging.info(f'ship: {ship.id}, DEPOSITING, {ship.halite_amount}')
         else:
             move_choice = Direction.Still
-            logging.info(f'ship: {ship.id}, COLLECTING, {ship.halite_amount}, CELL_HALITE: {game_map[ship.position].halite_amount}')
 
         command_queue.append(ship.move(move_choice))
 

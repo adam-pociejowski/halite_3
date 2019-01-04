@@ -1,18 +1,14 @@
 from keras.layers import Conv2D, MaxPooling2D
 from keras.layers import Dense, Activation, Flatten
 from keras.models import Sequential
-from keras.optimizers import Adam
-from tqdm import tqdm
-import tensorflow as tf
+from hlt.bot_utils import *
 import numpy as np
-import logging
 
 
 class SupervisedModel:
 
-    def __init__(self, radius, output_number, learning_rate=0.0001):
-        self.model_name = 'supervised_cnn_phase1'
-        self.learning_rate = learning_rate
+    def __init__(self, radius, output_number,  model_name='supervised_cnn_phase2', learning_rate=0.0001):
+        self.model_name = model_name
         self.output_number = output_number
         self.radius = radius
         self.input_dim = (radius * 2 + 1, radius * 2 + 1, 4)
@@ -23,8 +19,11 @@ class SupervisedModel:
 
     def predict(self, X):
         prediction = self.model.predict(X, batch_size=X.shape[0])
-        logging.info(f'prediction: {prediction}')
         return [np.random.choice(self.output_number, 1, p=prediction[i])[0] for i in range(X.shape[0])]
+
+    def predict_choice_actions(self, X):
+        prediction = self.model.predict(X, batch_size=X.shape[0])
+        return Utils.choice_actions(prediction)
 
     def _load_model(self):
         self.model.load_weights(f'models/{self.model_name}.h5')
@@ -57,5 +56,4 @@ class SupervisedModel:
 
         model.add(Dense(self.output_number))
         model.add(Activation('softmax'))
-        model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=self.learning_rate))
         return model

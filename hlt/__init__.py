@@ -3,4 +3,4 @@
 from . import commands, entity, game_map, networking, constants
 from .networking import Game
 from .positionals import Direction, Position
-from .bot_utils import Utils
+from .bot_utils import Utils, Dropout
