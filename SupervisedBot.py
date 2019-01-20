@@ -5,8 +5,8 @@ from algorithms.supervised_model import SupervisedModel
 episode = 0
 deposit_halite_amount = 800
 radius = 16
-summary_name = 'supervised_bot_new'
-model_name = 'cnn'
+summary_name = 'navigate_new'
+model_name = 'cnn-16-phase5'
 
 
 if len(sys.argv) >= 2:

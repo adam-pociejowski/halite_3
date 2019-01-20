@@ -15,4 +15,4 @@ for episode in range(EPISODE_START, EPISODE_START + EPISODES):
     #           f'"python supervised_bot.py {episode} {TURN_LIMIT}" "python rule_based_bot.py {episode} {TURN_LIMIT}"')
 
     # os.system(f'halite.exe --no-logs --no-replay -vvv --no-timeout "python supervised_bot.py {episode}" "python rule_based_bot.py {episode}"')
-    os.system(f'halite.exe --no-logs -vvv "python SupervisedBot.py {episode}" "python SupervisedBot2.py {episode}"')
+    os.system(f'halite.exe --replay-directory replays/ --no-logs -vvv "python SupervisedBot.py {episode}" "python SupervisedBot2.py {episode}"')

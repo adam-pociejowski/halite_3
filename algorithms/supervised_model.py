@@ -7,7 +7,7 @@ import numpy as np
 
 class SupervisedModel:
 
-    def __init__(self, radius, output_number,  model_name='supervised_cnn_phase2', learning_rate=0.0001):
+    def __init__(self, radius, output_number,  model_name='supervised_cnn_phase2'):
         self.model_name = model_name
         self.output_number = output_number
         self.radius = radius
